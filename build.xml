@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+
+<project basedir="." default="build" name="Mosaic">
+    <property environment="env"/>
+    <property name="ECLIPSE_HOME" value="../../eclipse"/>
+    <property name="debuglevel" value="source,lines,vars"/>
+    <property name="target" value="1.6"/>
+    <property name="source" value="1.6"/>
+    <path id="Mosaic.classpath">
+        <pathelement location="bin"/>
+        <pathelement location="lib/javaml-0.1.7.jar"/>
+    </path>
+    <target name="init">
+        <mkdir dir="bin"/>
+        <copy includeemptydirs="false" todir="bin">
+            <fileset dir="src">
+                <exclude name="**/*.launch"/>
+                <exclude name="**/*.java"/>
+            </fileset>
+        </copy>
+    </target>
+    <target name="clean">
+        <delete dir="bin"/>
+    	<delete file="mosaic.jar"/>
+    </target>
+    <target depends="clean" name="cleanall"/>
+    <target depends="init" name="build-project">
+        <echo message="${ant.project.name}: ${ant.file}"/>
+        <javac debug="true" debuglevel="${debuglevel}" destdir="bin" includeantruntime="false" source="${source}" target="${target}">
+            <src path="src"/>
+            <classpath refid="Mosaic.classpath"/>
+        </javac>
+    </target>
+    <target depends="build-project" name="build">
+        <jar destfile="mosaic.jar">
+            <manifest>
+                <attribute name="Main-Class" value="mosaic.MosaicGenerator"/>
+                <attribute name="Class-Path" value="."/>
+            </manifest>
+            <fileset dir="bin"/>
+            <zipfileset src="./lib/javaml-0.1.7.jar"/>
+        </jar>
+    </target>
+</project>

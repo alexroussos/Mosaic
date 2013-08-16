@@ -17,8 +17,8 @@ import java.util.List;
 
 import javax.imageio.ImageIO;
 
-import palettegenerator.ColorPaletteGenerator;
-import palettegenerator.ImageBasedColorPaletteGenerator;
+import mosaic.palettegenerator.ColorPaletteGenerator;
+import mosaic.palettegenerator.ImageBasedColorPaletteGenerator;
 
 /**
  * Generates a series of mosaics with various resolutions (tile sizes) and color palettes. The mosaics are then
@@ -45,7 +45,7 @@ import palettegenerator.ImageBasedColorPaletteGenerator;
 public class MosaicGenerator {
 
     private static final String DEFAULT_IMAGE = "https://dl.dropboxusercontent.com/u/65411942/IMG_1913.JPG";
-    private static final String DEFAULT_OUTPUT_DIRECTORY = System.getProperty("user.home");
+    private static final String DEFAULT_OUTPUT_DIRECTORY = "./generated_mosaics";
     private static final List<Integer> DEFAULT_COLOR_COUNTS = new ArrayList<Integer>(Arrays.asList(new Integer[] { 6, 12, 24 }));
     private static final List<Integer> DEFAULT_WIDTHS = new ArrayList<Integer>(Arrays.asList(new Integer[] { 50, 100, 200 }));
     
@@ -80,7 +80,7 @@ public class MosaicGenerator {
      * NOTE: Depending on where images are hosted, they may be unreadable by ImageIO. Images hosted on Dropbox seem to work fine.
      * 
      * @param inputFilename URL of image to be transformed into mosaic.
-     * @param outputDirectory Directory where composite image is to be saved. Defaults to user's home dir.
+     * @param outputDirectory Directory where composite image is to be saved. Defaults to "./generated_mosaics"
      * @param colorCounts Number of colors to use in each mosaic (corresponds to rows in composite image) eg {8, 12, 24}
      * @param widths The widths of each mosaic in pixels (corresponds to columns in composite image), eg {50, 100, 200}
      * @throws MalformedURLException
@@ -90,7 +90,9 @@ public class MosaicGenerator {
         BufferedImage rawImage = ImageIO.read(new URL(inputFilename));
         BufferedImage compositeImage = generateCompositeMosaic(rawImage, colorCounts, widths, new ImageBasedColorPaletteGenerator(rawImage));
         String outputFilename = "mosaic-" + System.currentTimeMillis() + ".png";
-        ImageIO.write(compositeImage, "png", new File(outputDirectory, outputFilename));
+        File outputFile = new File(outputDirectory, outputFilename);
+        outputFile.mkdirs();
+        ImageIO.write(compositeImage, "png", outputFile);
     }
     
     /**

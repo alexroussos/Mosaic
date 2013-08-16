@@ -1,4 +1,4 @@
-package palettegenerator;
+package mosaic.palettegenerator;
 
 import java.awt.Color;
 import java.awt.image.BufferedImage;

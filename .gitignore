@@ -4,3 +4,5 @@
 .classpath
 .externalToolBuilders
 /bin
+generated_mosaics
+.DS_Store

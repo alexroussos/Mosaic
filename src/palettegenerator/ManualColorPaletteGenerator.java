@@ -1,4 +1,4 @@
-package mosaic;
+package palettegenerator;
 
 
 import java.awt.Color;

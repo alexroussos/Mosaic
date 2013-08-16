@@ -17,6 +17,9 @@ import java.util.List;
 
 import javax.imageio.ImageIO;
 
+import palettegenerator.ColorPaletteGenerator;
+import palettegenerator.ImageBasedColorPaletteGenerator;
+
 /**
  * Generates a series of mosaics with various resolutions (tile sizes) and color palettes. The mosaics are then
  * stitched together into one composite mosaic.

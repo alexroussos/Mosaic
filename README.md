@@ -14,5 +14,6 @@ RUNNING:<br>
 To use from the command line:<br>
 ```java -jar mosaic.jar <imgUrl> <numColors> <widths>```<br>
 For example, to generate an array of mosaics using 4, 8 and 12 colors that are 50, 100, and 200 pixels wide:<br>
-```java -jar mosaic.jar https://mysite.com/myimage.png 4,8,12 50,100,200```
+```java -jar mosaic.jar https://mysite.com/myimage.png 4,8,12 50,100,200```<br>
+You images will be saved in the ```./generated_mosaics``` directory, relative to wherever you executed the jar.
   

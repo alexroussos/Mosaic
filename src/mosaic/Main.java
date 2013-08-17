@@ -24,6 +24,8 @@ import java.util.List;
  * 	e.g.: java -jar mosaic.jar https://mysite.com/myimage.png 4,8,12  50,100,200
  * 
  * ENHANCEMENTS:
+ * TODO bash script so don't have to type 'java -jar mosaic.jar'. it should also build for you if jar not present.
+ * TODO create a config object containing all options to pass to MosaicGenerator
  * TODO expose a composite generator that returns the variations as a two-dimensional array to allow further manipulation
  * TODO Support named arguments on CLI so user can choose which args to specify
  * TODO Allow user to specify the ColorPaletteGenerator from the CLI

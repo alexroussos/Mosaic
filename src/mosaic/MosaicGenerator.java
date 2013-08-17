@@ -33,10 +33,11 @@ import mosaic.palettegenerator.ImageBasedColorPaletteGenerator;
  * which allows the user to specify the colors to be used. 
  * 
  * USAGE:
- * There are three public methods
+ * These public methods may be useful in integrating this library into an application
  * - {@link MosaicGenerator#generateMosaic(BufferedImage, int, List)} - Returns a single mosaic with specified width and colors. Useful if you plan to manipulate the image further.
  * - {@link MosaicGenerator#generateCompositeMosaic(BufferedImage, List, List, ColorPaletteGenerator)} - Returns an image containing all permutations of widths and color ranges.
  * - {@link MosaicGenerator#run(String, String, List, List)} - Generates and saves a composite image. Use this if you don't intend to further manipulate the image.
+ * - {@link MosaicGenerator#scaleImage(BufferedImage, int)} - Scales an image back to specified size but will maintain the pixelated mosaic look.
  * 
  * @author alexroussos@gmail.com
  *

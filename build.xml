@@ -34,7 +34,7 @@
     <target depends="build-project" name="build">
         <jar destfile="mosaic.jar">
             <manifest>
-                <attribute name="Main-Class" value="mosaic.MosaicGenerator"/>
+                <attribute name="Main-Class" value="mosaic.Main"/>
                 <attribute name="Class-Path" value="."/>
             </manifest>
             <fileset dir="bin"/>

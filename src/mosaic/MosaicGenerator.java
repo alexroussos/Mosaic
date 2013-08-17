@@ -10,9 +10,11 @@ import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 
 import javax.imageio.ImageIO;
@@ -30,85 +32,52 @@ import mosaic.palettegenerator.ImageBasedColorPaletteGenerator;
  * that is included with this project. Other palette generators exist, such as the ManualColorPaletteGenerator, 
  * which allows the user to specify the colors to be used. 
  * 
- * BUILDING:
- * To build, execute the command 'ant build', which will create the file 'mosaic.jar'.
- * 
- * RUNNING:
- * To use from the command line:
- * 	java -jar mosaic.jar <imgUrl> <numColors> <widths>
- * 	e.g.: java -jar mosaic.jar https://mysite.com/myimage.png 4,8,12  50,100,200
- * 
- * ENHANCEMENTS:
- * TODO Support named arguments on CLI so user can choose which args to specify
- * TODO Allow user to specify the ColorPaletteGenerator from the CLI
- * TODO Print a strip on the composite showing the colors in the palette
- * TODO Better output filename - maybe include input filename eg mosaic-IMG_1913.png
- * 
- * SOURCE:
- * https://github.com/alexroussos/Mosaic
+ * USAGE:
+ * There are three public methods
+ * - {@link MosaicGenerator#generateMosaic(BufferedImage, int, List)} - Returns a single mosaic with specified width and colors. Useful if you plan to manipulate the image further.
+ * - {@link MosaicGenerator#generateCompositeMosaic(BufferedImage, List, List, ColorPaletteGenerator)} - Returns an image containing all permutations of widths and color ranges.
+ * - {@link MosaicGenerator#run(String, String, List, List)} - Generates and saves a composite image. Use this if you don't intend to further manipulate the image.
  * 
  * @author alexroussos@gmail.com
  *
  */
 public class MosaicGenerator {
-
-    private static final String DEFAULT_IMAGE = "https://dl.dropboxusercontent.com/u/65411942/IMG_1913.JPG";
-    private static final String DEFAULT_OUTPUT_DIRECTORY = "generated_mosaics";
-    private static final List<Integer> DEFAULT_COLOR_COUNTS = new ArrayList<Integer>(Arrays.asList(new Integer[] { 6, 12, 24 }));
-    private static final List<Integer> DEFAULT_WIDTHS = new ArrayList<Integer>(Arrays.asList(new Integer[] { 50, 100, 200 }));
-    
-    /**
-     * Can be with no args for default image and settings.
-     */
-    public static void main(String[] args) throws IOException {
-        String inputFilename = DEFAULT_IMAGE;
-        String outputDirectory = DEFAULT_OUTPUT_DIRECTORY;
-        List<Integer> widths = DEFAULT_WIDTHS;
-        List<Integer> colorCounts = DEFAULT_COLOR_COUNTS;
-        
-        // Override defaults with CLI args if provided
-        if (args.length > 0) {
-        	try {
-	            inputFilename = args[0];
-	            colorCounts = getArgAsList(args[1]);
-	            widths = getArgAsList(args[2]);
-        	} catch (Exception e) {
-                System.out.println("Usage is: MosaicGenerator <imgUrl> <numColors> <widths>");
-                System.out.println("e.g.: MosaicGenerator https://mysite.com/myimage.png 4,8,12 50,100,200");
-        	}
-        }
-        
-        MosaicGenerator mosaicGenerator = new MosaicGenerator();
-        mosaicGenerator.run(inputFilename, outputDirectory, colorCounts, widths);
-    }
+	
+	private static final String OUTPUT_EXTENSION = "png";
 
     /**
      * Generate a composite of mosaics based on different color palettes and resolutions.
      * 
      * NOTE: Depending on where images are hosted, they may be unreadable by ImageIO. Images hosted on Dropbox seem to work fine.
      * 
-     * @param inputFilename URL of image to be transformed into mosaic.
+     * @param inputUrl URL of image to be transformed into mosaic.
      * @param outputDirectory Directory where composite image is to be saved. Defaults to "./generated_mosaics"
      * @param colorCounts Number of colors to use in each mosaic (corresponds to rows in composite image) eg {8, 12, 24}
      * @param widths The widths of each mosaic in pixels (corresponds to columns in composite image), eg {50, 100, 200}
      * @throws MalformedURLException
      * @throws IOException
      */
-    private void run(String inputFilename, String outputDirectory, List<Integer> colorCounts, List<Integer> widths) throws MalformedURLException, IOException {
-        BufferedImage rawImage = ImageIO.read(new URL(inputFilename));
+    public void run(String inputUrl, String outputDirectory, List<Integer> colorCounts, List<Integer> widths) throws MalformedURLException, IOException {
+        BufferedImage rawImage = ImageIO.read(new URL(inputUrl));
         BufferedImage compositeImage = generateCompositeMosaic(rawImage, colorCounts, widths, new ImageBasedColorPaletteGenerator(rawImage));
-        String outputFilename = "mosaic-" + System.currentTimeMillis() + ".png";
+        String outputFilename = getOutputFilename(inputUrl);
         File outputFile = new File(outputDirectory, outputFilename);
         outputFile.mkdirs();
         System.out.println("Writing mosaic: " + outputFile.getAbsolutePath());
-        ImageIO.write(compositeImage, "png", outputFile);
+        ImageIO.write(compositeImage, OUTPUT_EXTENSION, outputFile);
     }
     
     /**
      * Create a large image containing a mosaic for each permutation of number of colors and resolution.
      * The smaller mosaics will be scaled up so that all are the same width as the largest.
+     * 
+     * @param sourceImage Image from which to generate mosaics
+     * @param colorCounts List of how many colors to allow in each variation, eg {8, 16, 32}
+     * @param widths Resolution of each variation (height will be scaled to maintain aspect ratio), eg {50, 100, 200}
+     * @param paletteGenerator Provides the list of colors to allow in the mosaic
+     * @return Composite image
      */
-    private BufferedImage generateCompositeMosaic(BufferedImage sourceImage, List<Integer> colorCounts, List<Integer> widths, ColorPaletteGenerator paletteGenerator) {
+    public BufferedImage generateCompositeMosaic(BufferedImage sourceImage, List<Integer> colorCounts, List<Integer> widths, ColorPaletteGenerator paletteGenerator) {
         int labelOffsetY = 10;
         int cellWidth = Collections.max(widths);
         int cellHeight = cellWidth * sourceImage.getHeight() / sourceImage.getWidth();
@@ -123,7 +92,7 @@ public class MosaicGenerator {
             destX1 = 0;
             List<Color> colors = paletteGenerator.generateColorPalette(colorCount);
             for (Integer width : widths) {
-                BufferedImage tileImage = colorImage(scaleImage(sourceImage, width), colors);
+                BufferedImage tileImage = generateMosaic(sourceImage, width, colors);
                 srcX2 = tileImage.getWidth();
                 srcY2 = tileImage.getHeight();
                 graphics.drawImage(tileImage, destX1, destY1, destX2, destY2, srcX1, srcY1, srcX2, srcY2, null);
@@ -138,11 +107,26 @@ public class MosaicGenerator {
 
         return outImage;
     }
+    
+    /**
+     * Generate a single mosaic (one resolution and color set). 
+     * If the mosaic is too small, it can be scaled up using {@link MosaicGenerator#scaleImage(BufferedImage, int)}, which will
+     * maintain the pixelated mosaic look but result in a larger image that is more suitable for viewing.
+     * 
+     * @param sourceImage Image from which to generate mosaic
+     * @param width How many tiles wide the mosaic will be
+     * @param colors Colors to use in the mosaic
+     * @return
+     */
+    public BufferedImage generateMosaic(BufferedImage sourceImage, int width, List<Color> colors) {
+    	BufferedImage mosaic = colorImage(scaleImage(sourceImage, width), colors);
+    	return mosaic;
+    }
 
     /**
      * Scale an image down to the specified width, maintaining the aspect ratio.
      */
-    private BufferedImage scaleImage(BufferedImage image, int targetWidth) {
+    public BufferedImage scaleImage(BufferedImage image, int targetWidth) {
         double scaleFactor = ((double) targetWidth) / image.getWidth();
         AffineTransform scaleTrans = AffineTransform.getScaleInstance(scaleFactor, scaleFactor);
         AffineTransformOp scaleOp = new AffineTransformOp(scaleTrans, AffineTransformOp.TYPE_BILINEAR);
@@ -190,15 +174,19 @@ public class MosaicGenerator {
     }
     
     /**
-     * Parses a compound argument of comma-separated integers into a list of integers.
-     * @param args Argument in the form "10,20,30"
-     * @return
+     * Create a filename for a mosaic
+     * e.g. mosaic-IMG_1913-20130817-084938.png
      */
-    private static List<Integer> getArgAsList(String args) {
-    	List<Integer> list = new ArrayList<Integer>();
-    	for (String arg : args.split(",")) {
-    		list.add(Integer.parseInt(arg));
+    private String getOutputFilename(String inputUrl) {
+    	try {
+	    	String filename = (new File(inputUrl).getName()); // eg IMG_1913.jpg
+	    	String filenameBase = filename.split("\\.")[0]; // eg IMG_1913
+	    	String date = new SimpleDateFormat("yyyyMMdd-hhmmss").format(new Date());
+	        return "mosaic-" + filenameBase + "-" + date + "." + OUTPUT_EXTENSION;
+    	} catch (Exception e) {
+    		System.out.println("Error while generating output filename. Resorting to default.");
+    		e.printStackTrace();
+    		return "mosaic-" + System.currentTimeMillis() + "." + OUTPUT_EXTENSION;
     	}
-    	return list;
     }
 }

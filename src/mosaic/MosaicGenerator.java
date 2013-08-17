@@ -7,6 +7,7 @@ import java.awt.geom.AffineTransform;
 import java.awt.image.AffineTransformOp;
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -15,12 +16,17 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
 
 import javax.imageio.ImageIO;
 
 import mosaic.palettegenerator.ColorPaletteGenerator;
 import mosaic.palettegenerator.ImageBasedColorPaletteGenerator;
+import mosaic.palettegenerator.PropertiesFilePaletteGenerator;
 
 /**
  * OVERVIEW:
@@ -58,46 +64,47 @@ public class MosaicGenerator {
      * @throws MalformedURLException
      * @throws IOException
      */
-    public void run(String inputUrl, String outputDirectory, List<Integer> colorCounts, List<Integer> widths) throws MalformedURLException, IOException {
+    public void run(String inputUrl, String outputDirectory, List<Integer> colorCounts, List<Dimensions> dims) throws MalformedURLException, IOException {
         BufferedImage rawImage = ImageIO.read(new URL(inputUrl));
-        BufferedImage compositeImage = generateCompositeMosaic(rawImage, colorCounts, widths, new ImageBasedColorPaletteGenerator(rawImage));
         String outputFilename = getOutputFilename(inputUrl);
         File outputFile = new File(outputDirectory, outputFilename);
-        outputFile.mkdirs();
-        System.out.println("Writing mosaic: " + outputFile.getAbsolutePath());
-        ImageIO.write(compositeImage, OUTPUT_EXTENSION, outputFile);
+        writeCompositeMosaic(rawImage, colorCounts, dims, new PropertiesFilePaletteGenerator("tinytilemosaics_com_ceramic.properties"), outputFile);
     }
-    
-    /**
+
+	/**
      * Create a large image containing a mosaic for each permutation of number of colors and resolution.
      * The smaller mosaics will be scaled up so that all are the same width as the largest.
      * 
      * @param sourceImage Image from which to generate mosaics
      * @param colorCounts List of how many colors to allow in each variation, eg {8, 16, 32}
-     * @param widths Resolution of each variation (height will be scaled to maintain aspect ratio), eg {50, 100, 200}
+     * @param dims Resolution of each variation (image will be scaled to fit within the given dimensions), eg {50x30, 100x60, 200x120}
      * @param paletteGenerator Provides the list of colors to allow in the mosaic
      * @return Composite image
      */
-    public BufferedImage generateCompositeMosaic(BufferedImage sourceImage, List<Integer> colorCounts, List<Integer> widths, ColorPaletteGenerator paletteGenerator) {
+    public BufferedImage writeCompositeMosaic(BufferedImage sourceImage, List<Integer> colorCounts, List<Dimensions> dims, ColorPaletteGenerator paletteGenerator, File outputFile) {
         int labelOffsetY = 10;
-        int cellWidth = Collections.max(widths);
-        int cellHeight = cellWidth * sourceImage.getHeight() / sourceImage.getWidth();
-        int containerWidth = cellWidth * widths.size();
+        int cellWidth = getMaxWidth(dims, sourceImage);
+        int cellHeight = getMaxHeight(dims, sourceImage);
+        int containerWidth = cellWidth * dims.size();
         int containerHeight = cellHeight * colorCounts.size();
         BufferedImage outImage = new BufferedImage(containerWidth, containerHeight, sourceImage.getType());
         Graphics graphics = outImage.getGraphics();
 
         int destX1 = 0, destY1 = 0, destX2 = cellWidth, destY2 = cellHeight, srcX1 = 0, srcY1 = 0, srcX2 = 0, srcY2 = 0;
 
+        Map<String, Map<String, Integer>> tilesUsed = new LinkedHashMap<String, Map<String,Integer>>();
         for (Integer colorCount : colorCounts) {
             destX1 = 0;
-            List<Color> colors = paletteGenerator.generateColorPalette(colorCount);
-            for (Integer width : widths) {
-                BufferedImage tileImage = generateMosaic(sourceImage, width, colors);
+            Map<String, Color> colors = paletteGenerator.generateColorPalette(colorCount);
+            for (Dimensions box : dims) {
+            	MosaicGenerationResult result = generateMosaic(sourceImage, box, colors);
+                BufferedImage tileImage = result.getMosaic();
                 srcX2 = tileImage.getWidth();
                 srcY2 = tileImage.getHeight();
                 graphics.drawImage(tileImage, destX1, destY1, destX2, destY2, srcX1, srcY1, srcX2, srcY2, null);
-                graphics.drawString(srcX2 + "x" + srcY2 + "-" + colorCount + "color", destX1, destY1 + labelOffsetY);
+                String title = srcX2 + "x" + srcY2 + "-" + colorCount + "color";
+                graphics.drawString(title, destX1, destY1 + labelOffsetY);
+                tilesUsed.put(title, result.getCounts());
                 destX1 = destX2;
                 destX2 += cellWidth;
             }
@@ -105,65 +112,141 @@ public class MosaicGenerator {
             destY2 += cellHeight;
             destX2 = cellWidth;
         }
+        
+        outputFile.mkdirs();
+        System.out.println("Writing mosaic: " + outputFile.getAbsolutePath());
+        try {
+			ImageIO.write(outImage, OUTPUT_EXTENSION, outputFile);
+			File metaInfoLocation = new File(outputFile.getParentFile(), outputFile.getName() + ".txt");
+			outputMetaInfo(tilesUsed, metaInfoLocation);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 
         return outImage;
     }
     
-    /**
+    private int getMaxHeight(List<Dimensions> dims, BufferedImage sourceImage) {
+    	int maxHeight = 0;
+    	for (Dimensions dimensions : dims) {
+			Dimensions scaled = dimensions.scaledToFitWithinThis(sourceImage.getWidth(), sourceImage.getHeight());
+			if(scaled.getHeight() > maxHeight){
+				maxHeight = scaled.getHeight();
+			}
+		}
+    	
+    	return maxHeight;
+	}
+
+	private int getMaxWidth(List<Dimensions> dims, BufferedImage sourceImage) {
+    	int maxWidth = 0;
+    	for (Dimensions dimensions : dims) {
+			Dimensions scaled = dimensions.scaledToFitWithinThis(sourceImage.getWidth(), sourceImage.getHeight());
+			if(scaled.getWidth() > maxWidth){
+				maxWidth = scaled.getWidth();
+			}
+		}
+    	
+    	return maxWidth;
+	}
+
+	private void outputMetaInfo(Map<String, Map<String, Integer>> tilesUsed, File metaInfoLocation) throws IOException {
+    	FileWriter writer = new FileWriter(metaInfoLocation);
+    	
+        Set<Map.Entry<String, Map<String, Integer>>> dataEntries = tilesUsed.entrySet();
+        for (Map.Entry<String, Map<String, Integer>> entry : dataEntries) {
+        	writer.write(entry.getKey());
+        	writer.write("\n");
+            Set<Map.Entry<String, Integer>> colorCounts = entry.getValue().entrySet();
+            int total = 0;
+            for (Map.Entry<String, Integer> count : colorCounts) {
+            	writer.write("\t");
+            	writer.write(count.getKey());
+            	writer.write(" : ");
+            	Integer numberOfTiles = count.getValue();
+            	writer.write(numberOfTiles.toString());
+            	writer.write("\n");
+            	total = total + numberOfTiles.intValue();
+            }
+            writer.write("total: ");
+            writer.write(String.valueOf(total));
+            writer.write("\n\n\n");
+        }
+
+        writer.flush();
+        writer.close();
+	}
+
+	/**
      * Generate a single mosaic (one resolution and color set). 
      * If the mosaic is too small, it can be scaled up using {@link MosaicGenerator#scaleImage(BufferedImage, int)}, which will
      * maintain the pixelated mosaic look but result in a larger image that is more suitable for viewing.
      * 
      * @param sourceImage Image from which to generate mosaic
-     * @param width How many tiles wide the mosaic will be
+     * @param box How many tiles wide the mosaic will be
      * @param colors Colors to use in the mosaic
      * @return
      */
-    public BufferedImage generateMosaic(BufferedImage sourceImage, int width, List<Color> colors) {
-    	BufferedImage mosaic = colorImage(scaleImage(sourceImage, width), colors);
-    	return mosaic;
+    public MosaicGenerationResult generateMosaic(BufferedImage sourceImage, Dimensions box, Map<String, Color> colors) {
+    	BufferedImage mosaic = scaleImage(sourceImage, box);
+    	Map<String, Integer> tileCounts = colorImage(mosaic, colors);
+    	return new MosaicGenerationResult(mosaic, tileCounts);
     }
 
     /**
      * Scale an image down to the specified width, maintaining the aspect ratio.
      */
-    public BufferedImage scaleImage(BufferedImage image, int targetWidth) {
-        double scaleFactor = ((double) targetWidth) / image.getWidth();
-        AffineTransform scaleTrans = AffineTransform.getScaleInstance(scaleFactor, scaleFactor);
+    public BufferedImage scaleImage(BufferedImage image, Dimensions box) {
+    	Dimensions scaledSizes = box.scaledToFitWithinThis(image.getWidth(), image.getHeight());
+
+        double widthScaleFactor = ((double) scaledSizes.getWidth()) / image.getWidth();
+        double heightScaleFactor = ((double) scaledSizes.getHeight()) / image.getHeight();
+        AffineTransform scaleTrans = AffineTransform.getScaleInstance(widthScaleFactor, heightScaleFactor);
         AffineTransformOp scaleOp = new AffineTransformOp(scaleTrans, AffineTransformOp.TYPE_BILINEAR);
-        int scaledWidth = (int) (image.getWidth() * scaleFactor);
-        int scaledHeight = (int) (image.getHeight() * scaleFactor);
-        BufferedImage scaledImage = scaleOp.filter(image, new BufferedImage(scaledWidth, scaledHeight, image.getType()));
+        BufferedImage scaledImage = scaleOp.filter(image, new BufferedImage(scaledSizes.getWidth(), scaledSizes.getHeight(), image.getType()));
         return scaledImage;
     }
 
     /**
      * Generate an image containing only the colors in the specified palette.
      */
-    private BufferedImage colorImage(BufferedImage image, List<Color> availableColors) {
+    private Map<String, Integer> colorImage(BufferedImage image, Map<String, Color> availableColors) {
+    	Map<String, Integer> tileCounts = new TreeMap<String, Integer>();
         for (int x = 0; x < image.getWidth(); x++) {
             for (int y = 0; y < image.getHeight(); y++) {
                 Color c = new Color(image.getRGB(x, y));
-                image.setRGB(x, y, getNearestColor(c, availableColors).getRGB());
+                String colorName = getNearestColorName(c, availableColors);
+                upColorCount(tileCounts, colorName);
+                image.setRGB(x, y, availableColors.get(colorName).getRGB());
             }
         }
-        return image;
+        return tileCounts;
     }
 
-    /**
+    private void upColorCount(Map<String, Integer> tileCounts, String colorName) {
+    	Integer count = tileCounts.get(colorName);
+    	if(count == null){
+    		count = new Integer(0);
+    	}
+    	tileCounts.put(colorName, new Integer(count.intValue() + 1));
+	}
+
+	/**
      * Find the closest color in the palette to the specified target color.
      */
-    private Color getNearestColor(Color targetColor, List<Color> availableColors) {
-        Color closestColor = null;
+    private String getNearestColorName(Color targetColor, Map<String, Color> availableColors) {
+        String closestColorName = "";
         int minDistance = Integer.MAX_VALUE;
-        for (Color color : availableColors) {
-            int distance = getDistance(targetColor, color);
+        Set<Map.Entry<String, Color>> colorEntries = availableColors.entrySet();
+        for (Map.Entry<String, Color> entry : colorEntries) {
+            int distance = getDistance(targetColor, entry.getValue());
             if (distance < minDistance) {
-                closestColor = color;
+                closestColorName = entry.getKey();
                 minDistance = distance;
             }
         }
-        return closestColor;
+        return closestColorName;
     }
 
     /**

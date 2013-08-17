@@ -2,7 +2,7 @@ package mosaic.palettegenerator;
 
 
 import java.awt.Color;
-import java.util.List;
+import java.util.Map;
 
 /**
  * ColorPaletteGenerators return a list of colors.
@@ -10,5 +10,5 @@ import java.util.List;
  *
  */
 public interface ColorPaletteGenerator {
-	public List<Color> generateColorPalette(int numColors);
+	public Map<String, Color> generateColorPalette(int numColors);
 }

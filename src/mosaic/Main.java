@@ -5,6 +5,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import mosaic.imageloader.FolderImageLoader;
+import mosaic.imageloader.ImageLoader;
+import mosaic.imageloader.ManualImageLoader;
+
 /**
  * OVERVIEW:
  * Generates a series of mosaics with various resolutions (tile sizes) and color palettes. The mosaics are then
@@ -21,7 +25,7 @@ import java.util.List;
  * RUNNING:
  * To use from the command line:
  * 	java -jar mosaic.jar <imgUrl> <numColors> <widths>
- * 	e.g.: java -jar mosaic.jar https://mysite.com/myimage.png 4,8,12  50,100,200
+ * 	e.g.: java -jar mosaic.jar https://mysite.com/myimage.png 4,8,12  50x30,100x60,200x120
  * 
  * ENHANCEMENTS:
  * TODO bash script so don't have to type 'java -jar mosaic.jar'. it should also build for you if jar not present.
@@ -39,34 +43,38 @@ import java.util.List;
  */
 public class Main {
 
-    private static final String DEFAULT_IMAGE = "https://dl.dropboxusercontent.com/u/65411942/IMG_1913.JPG";
+    private static final ImageLoader DEFAULT_IMAGE_LOADER = new FolderImageLoader("/Users/ryoullar/Desktop/Dropbox/CP in spring/");
     private static final String DEFAULT_OUTPUT_DIRECTORY = "generated_mosaics";
-    private static final List<Integer> DEFAULT_COLOR_COUNTS = new ArrayList<Integer>(Arrays.asList(new Integer[] { 6, 12, 24 }));
-    private static final List<Integer> DEFAULT_WIDTHS = new ArrayList<Integer>(Arrays.asList(new Integer[] { 50, 100, 200 }));
+    private static final List<Integer> DEFAULT_COLOR_COUNTS = new ArrayList<Integer>(Arrays.asList(new Integer[] {115}));
+    private static final List<Dimensions> DEFAULT_DIMENSIONS = new ArrayList<Dimensions>(Arrays.asList(new Dimensions[] { new Dimensions(-1, 200)}));
     
     /**
      * Can be with no args for default image and settings.
      */
     public static void main(String[] args) throws IOException {
-        String inputFilename = DEFAULT_IMAGE;
-        String outputDirectory = DEFAULT_OUTPUT_DIRECTORY;
-        List<Integer> widths = DEFAULT_WIDTHS;
-        List<Integer> colorCounts = DEFAULT_COLOR_COUNTS;
-        
-        // Override defaults with CLI args if provided
-        if (args.length > 0) {
-        	try {
-	            inputFilename = args[0];
-	            colorCounts = getArgAsList(args[1]);
-	            widths = getArgAsList(args[2]);
-        	} catch (Exception e) {
-                System.out.println("Usage is: MosaicGenerator <imgUrl> <numColors> <widths>");
-                System.out.println("e.g.: MosaicGenerator https://mysite.com/myimage.png 4,8,12 50,100,200");
-        	}
-        }
-        
-        MosaicGenerator mosaicGenerator = new MosaicGenerator();
-        mosaicGenerator.run(inputFilename, outputDirectory, colorCounts, widths);
+    	List<String> imageLocations = DEFAULT_IMAGE_LOADER.getImageLocations();
+    	for (String inputFilename : imageLocations) {
+            String outputDirectory = DEFAULT_OUTPUT_DIRECTORY;
+            List<Dimensions> dims = DEFAULT_DIMENSIONS;
+            List<Integer> colorCounts = DEFAULT_COLOR_COUNTS;
+            
+            // Override defaults with CLI args if provided
+            if (args.length > 0) {
+            	try {
+    	            inputFilename = args[0];
+    	            colorCounts = getArgAsList(args[1]);
+    	            dims = getArgAsDimList(args[2]);
+            	} catch (Exception e) {
+                    System.out.println("Usage is: MosaicGenerator <imgUrl> <numColors> <widths>");
+                    System.out.println("e.g.: MosaicGenerator https://mysite.com/myimage.png 4,8,12 50x30,100x60,200x120");
+            	}
+            }
+            
+            MosaicGenerator mosaicGenerator = new MosaicGenerator();
+            mosaicGenerator.run(inputFilename, outputDirectory, colorCounts, dims);
+		}
+    	
+    	System.out.println("done");
     }
     
     /**
@@ -78,6 +86,20 @@ public class Main {
     	List<Integer> list = new ArrayList<Integer>();
     	for (String arg : args.split(",")) {
     		list.add(Integer.parseInt(arg));
+    	}
+    	return list;
+    }
+    
+    /**
+     * Parses a compound argument of comma-separated integers into a list of integers.
+     * @param args Argument in the form "10,20,30"
+     * @return
+     */
+    private static List<Dimensions> getArgAsDimList(String args) {
+    	List<Dimensions> list = new ArrayList<Dimensions>();
+    	for (String arg : args.split(",")) {
+    		String[] size = arg.split("x");
+    		list.add(new Dimensions(Integer.parseInt(size[0]), Integer.parseInt(size[1])));
     	}
     	return list;
     }

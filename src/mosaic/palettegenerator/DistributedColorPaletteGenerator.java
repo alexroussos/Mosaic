@@ -2,8 +2,8 @@ package mosaic.palettegenerator;
 
 
 import java.awt.Color;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
  * Return n colors evenly distributed across the RGB spectrum.
@@ -23,12 +23,12 @@ public class DistributedColorPaletteGenerator implements ColorPaletteGenerator {
 	 * NOTE: see comments within method for caveat.
 	 */
 	@Override
-	public List<Color> generateColorPalette(int numColors) {
+	public Map<String, Color> generateColorPalette(int numColors) {
 		if (numColors < MIN_COLORS) {
 			throw new IllegalArgumentException("Number of colors must be at least " + MIN_COLORS);
 		}
 		int numChannels = 3;
-        List<Color> colors = new ArrayList<Color>();
+		Map<String, Color> colors = new LinkedHashMap<String, Color>();
         int stepsPerChannel = (int) Math.pow(numColors, (double) 1 / numChannels); // how many r values there will be (or g, or b values...)
         int stepSize = MAX_BYTE / (stepsPerChannel - 1); // increment the rgb value by this amount each iteration
         
@@ -50,7 +50,7 @@ public class DistributedColorPaletteGenerator implements ColorPaletteGenerator {
         for (int rSteps = 0; rSteps < stepsPerChannel; rSteps++) {
             for (int gSteps = 0; gSteps < stepsPerChannel; gSteps++) {
                 for (int bSteps = 0; bSteps < numBSteps; bSteps++) {
-                    colors.add(new Color(r, g, b));
+            		colors.put(Integer.toHexString(r) + Integer.toHexString(g) + Integer.toHexString(b), new Color(r, g, b));
                     b += bStepSize;
                     if (colors.size() == numColors) {
                     	return colors;

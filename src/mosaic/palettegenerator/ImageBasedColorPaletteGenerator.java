@@ -2,10 +2,10 @@ package mosaic.palettegenerator;
 
 import java.awt.Color;
 import java.awt.image.BufferedImage;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
-import java.util.List;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Random;
 
 import net.sf.javaml.clustering.KMeans;
@@ -38,8 +38,8 @@ public class ImageBasedColorPaletteGenerator implements ColorPaletteGenerator {
 	 * and then generates a palate based on those clusters.
 	 */
 	@Override
-	public List<Color> generateColorPalette(int numColors) {
-        List<Color> colors = new ArrayList<Color>();
+	public Map<String, Color> generateColorPalette(int numColors) {
+		Map<String, Color> colors = new LinkedHashMap<String, Color>();
         Random r = new Random();
         int height = image.getHeight();
         int width = image.getWidth();
@@ -61,7 +61,7 @@ public class ImageBasedColorPaletteGenerator implements ColorPaletteGenerator {
     	// Add a color to the palette for each cluster
     	for (Dataset cluster : clusters) {
     		Color c = getColorFromCluster(cluster);
-    		colors.add(c);
+    		colors.put(Integer.toHexString(c.getRed()) + Integer.toHexString(c.getBlue()) + Integer.toHexString(c.getGreen()), c);
     	}
     	return colors;
 	}

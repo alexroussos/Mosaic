@@ -20,8 +20,6 @@ import net.sf.javaml.tools.DatasetTools;
  * library (javaml) to perform k-means clustering (generating n clusters of similar colors), and then chooses the colors 
  * from the centroid of each cluster.
  * 
- * The javaml library is available here: http://sourceforge.net/projects/java-ml/?source=dlp
- * 
  * @author alexroussos@gmail.com
  *
  */

@@ -41,4 +41,7 @@
             <zipfileset src="./lib/javaml-0.1.7.jar"/>
         </jar>
     </target>
+	<target name="doc" depends="init" description="generate documentation">
+    	<javadoc sourcepath="src" destdir="doc"/>
+  	</target>
 </project>
